@@ -1,0 +1,15 @@
+{
+  "name": "aidoodle",
+  "version": "1.0.0",
+  "description": "AI Doodle - AI Artificial Intelligence & AI Technology Startups PHP Template",
+  "author": "PixcelsThemes",
+  "scripts": {
+    "dev": "sass assets/scss/main.scss assets/css/main.css --watch ",
+    "build": "sass assets/scss/main.scss assets/css/main.css",
+    "minify": "sass assets/scss/main.scss assets/css/main.min.css --style=compressed"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "sass": "^1.75.0"
+  }
+}
