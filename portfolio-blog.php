@@ -653,7 +653,7 @@
     </style>
 
     <!-- Cursor start -->
-    <?php include './partials/Cursor_start.php' ?>
+    <?php include './partials/cursor_start.php' ?>
     <!-- Cursor end -->
 
     <!-- back to top start -->
