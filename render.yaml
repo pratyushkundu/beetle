@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: beetle-ant-co
+    env: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DB_HOST
+        value: dpg-d4ea8va4d50c73drev3g-a
+      - key: DB_NAME
+        value: beetle_and_ant_co_9uf1
+      - key: DB_USER
+        value: beetle_and_ant_co_9uf1_user
+      - key: DB_PASS
+        value: bLbcuFPENyCQkaqLROUShyNTho5YWfak
+      - key: DB_PORT
+        value: 5432
