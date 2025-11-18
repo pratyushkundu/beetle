@@ -1,5 +1,5 @@
 <footer class="h5_footer-area">
-                    <div class="h5_footer-top pt-120 pb-80">
+                    <div class="h5_footer-top pt-120 pb-8">
                         <div class="container">
                              <div class="row justify-content-between">
                                 <div class="col-xl-3 col-lg-3 col-md-5 col-sm-7 tp_has_fade_anim" data-fade-from="left">

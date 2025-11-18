@@ -2,8 +2,8 @@
 // PHP Configuration and Data Variables
 $company_name = "Beetle & Ant Co.";
 $motto = "Engineered for Tomorrow.";
-$main_headline = "Building Your Digital Backbone with Software that Scales.";
-$sub_headline = "We partner with companies to create robust, scalable, and intelligent software that drives sustainable business value.";
+$main_headline = "Beetle & Ant Co. 🤝 PP Ventures";
+$sub_headline = "A strategic partnership combining engineering innovation, management expertise, and software excellence — building the digital backbone of tomorrow.";
 $contact_email = "contact@beetleant.co";
 
 // Navigation Structure
@@ -1755,7 +1755,43 @@ document.addEventListener("DOMContentLoaded", function () {
         </section>
 
         <!-- Solutions section removed per request: keeping page focused on Case Studies -->
-        
+          <!-- STRATEGIC PARTNERSHIP SECTION -->
+    <section id="partnership" class="py-20 sm:py-24 bg-[#F9FAFB]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-4xl font-extrabold text-dark-text mb-6">Strategic Partnership</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-12">
+                We are proud to announce our <strong>strategic partnership</strong> with <span class="text-accent font-semibold">PP Ventures</span> — a renowned leader in engineering innovation and sustainable design. Together, we aim to engineer the future through intelligent software, advanced automation, and industrial excellence.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mt-12 items-center">
+                <!-- Partnership Visual -->
+                <div class="flex justify-center">
+                    <img src="https://images.unsplash.com/photo-1581090700227-1e37b190418e?auto=format&fit=crop&w=900&q=60" 
+                         alt="Partnership between Beetle & Ant Co. and PP Ventures" 
+                         class="rounded-2xl shadow-lg w-full max-w-md object-cover">
+                </div>
+
+                <!-- Partnership Details -->
+                <div class="text-left md:pl-8">
+                    <h3 class="text-3xl font-bold text-dark-text mb-4">Beetle & Ant Co 🤝 PP Ventures</h3>
+                    <p class="text-lg text-gray-700 mb-6 leading-relaxed">
+                        This collaboration brings together our software engineering expertise with PP Ventures’ deep industrial knowledge — combining digital transformation with real-world engineering excellence.
+                    </p>
+                    <ul class="list-disc pl-6 text-gray-700 space-y-2">
+                        <li>Joint R&D on industrial automation and smart factory systems.</li>
+                        <li>Collaborative development of scalable IoT and AI-powered platforms.</li>
+                        <li>Co-engineered digital solutions for manufacturing and infrastructure sectors.</li>
+                    </ul>
+                    <div class="mt-8">
+                        <a href="#contact" class="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-full shadow-xl text-white bg-accent hover:bg-opacity-90 transition duration-300 transform hover:scale-105">
+                            Discover Our Collaborative Work
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
         <!-- PORTFOLIO SECTION: New user-centric split layout -->
         <section id="portfolio" class="py-20 sm:py-24 bg-F9FAFB">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1766,13 +1802,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     </p>
                 </div>
                 
-                <!-- Portfolio 3D Visualization (kept full width above the split content) -->
-                <!-- <div id="portfolio-3d-container" class="relative hidden lg:block mb-12 rounded-xl border border-gray-200">
-                    <canvas id="portfolio-3d-canvas" class="w-full h-full"></canvas>
-                    <div id="loading-overlay" class="absolute inset-0 bg-transparent flex items-center justify-center text-lg text-gray-700">
-                        <div style="background:rgba(255,255,255,0.85); padding:8px 14px; border-radius:8px; box-shadow:0 6px 18px rgba(15,23,42,0.06);">Loading 3D Portfolio Interactions...</div>
-                    </div>
-                </div> -->
+             
 
                 <!-- MAIN PORTFOLIO SPLIT CONTENT -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 mt-16">

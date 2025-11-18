@@ -1,34 +1,226 @@
+
 <!DOCTYPE html>
 <html lang="en">
+
 <?php include './partials/head.php' ?>
-  
-  <body>
-    <!-- Cursor start -->
-    <?php include './partials/Cursor_start.php' ?>
-    <!-- Cursor end -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $company_name; ?> - Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F9FAFB; /* Light Gray Background (Whitish Aesthetic) */
+            color: #1F2937; /* Dark Gray Text */
+        }
+        :root{
+            --accent: #1F4B8F; /* corporate navy */
+            --accent-2: #6B21A8; /* secondary purple */
+            --muted: #6B7280; /* gray-500 */
+            --card-bg: #ffffff;
+            --surface: #F3F6FA;
+            --glass: rgba(255,255,255,0.6);
+            --canvas-opacity: 0.72; /* default canvas opacity to blend with page */
+            --canvas-tint: rgba(31,75,143,0.02);
+        }
+        .text-accent { color: var(--accent); }
+        .bg-accent { background-color: var(--accent); }
+        .text-dark-text { color: #1F2937; }
+        .bg-card { background-color: #ffffff; }
+        .hero-bg {
+            background-color: #ffffff;
+            /* very subtle diagonal sheen to feel modern and corporate */
+            background-image: linear-gradient(135deg, rgba(31,75,143,0.02) 0%, rgba(107,33,168,0.01) 100%);
+            background-size: cover;
+            min-height: 760px;
+            display: block;
+        }
+        /* Overlay to mask particles near the top so they don't overlap header or hero text */
+        #hero-map-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 5; /* sits above canvas but below content (content uses z-10) */
+            pointer-events: none;
+            /* subtle top mask: partly transparent so dotted continents remain visible under hero headline */
+            background: linear-gradient(to bottom, rgba(249,250,251,0.75) 0%, rgba(249,250,251,0.08) 28%, rgba(249,250,251,0) 60%);
+        }
+        
+        /* Make the 3D container blend with the page rather than look boxed.
+           Keep canvas visually behind content and prevent particles/cubes from spilling over text. */
+        #portfolio-3d-container {
+            width: 100%;
+            height: 340px; /* slightly taller so the animation has room to breathe */
+            position: relative;
+            background: transparent; /* transparent so it reads as part of the page */
+            border-radius: 0; /* remove rounded card feel */
+            overflow: hidden; /* prevent 3D objects from extending outside the visual area */
+            box-shadow: none; /* remove boxed shadow */
+            transition: all 0.45s ease;
+            z-index: 0; /* ensure the container stays behind main content */
+        }
 
-    <!-- back to top start -->
-    <?php include './partials/back_to_start.php' ?>
-    <!-- back to top end -->
+        /* Soft fades top and bottom so the canvas blends into the surrounding page */
+        #portfolio-3d-container::before,
+        #portfolio-3d-container::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 72px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        /* top fade matches the main page background */
+        #portfolio-3d-container::before {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(249,250,251,1), rgba(249,250,251,0));
+        }
+        /* bottom fade to softly merge into following section */
+        #portfolio-3d-container::after {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(249,250,251,1), rgba(249,250,251,0));
+        }
+        
+       /* Ensure all canvases are transparent and don't block UI interactions */
+        #portfolio-3d-canvas, #hero-map-canvas {
+           background-color: transparent !important;
+           display: block;
+           width: 100%;
+           height: 100%;
+           pointer-events: none; /* allow clicks to pass through to page elements */
+           /* Make the canvas less visually dominant so the motion feels like part of the background */
+           opacity: var(--canvas-opacity);
+           mix-blend-mode: normal;
+           transform-origin: center;
+       }
+        /* Force canvases to sit behind content (but above the page background) */
+        #portfolio-3d-canvas, #hero-map-canvas { z-index: 0; position: relative; }
 
-    <!-- sidebar-information-area-start -->
-    <?php include './partials/sidebar_information.php' ?>
-    <!-- sidebar-information-area-end -->
+        /* Project cards should sit above the canvas so text never gets visually overlapped */
+        .project-card { position: relative; z-index: 10; }
+
+        /* Improve text contrast and legibility when over animated backgrounds */
+        .hero-bg h1 {
+            color: #0b1220; /* darker headline for contrast */
+            text-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        }
+        .project-card .p-5 { background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.86)); backdrop-filter: blur(6px); }
+        .project-card h3 { color: #0b1220; text-shadow: 0 2px 6px rgba(15,23,42,0.04); }
+        .cta-link { color: var(--accent); font-weight:700; }
+        
+    /* New Styles for Vertical Sidebar Filtering (explicit CSS so it works without Tailwind processing) */
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: left;
+            background: transparent;
+            color: #374151; /* gray-700 */
+            transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .filter-btn:not(.active):hover {
+            background: #f3f4f6; /* gray-100 */
+            transform: translateY(-2px);
+        }
+        .filter-btn.active {
+            background: var(--accent); /* corporate accent */
+            color: #ffffff;
+            box-shadow: 0 8px 20px rgba(31,75,143,0.14);
+            font-weight: 700;
+            transform: none;
+        }
+        .filter-btn .count {
+            background: #e5e7eb; /* gray-200 */
+            color: #374151;
+            padding: 0.125rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            margin-left: 0.75rem;
+        }
+        .filter-btn.active .count {
+            background: #ffffff;
+            color: var(--accent);
+        }
+
+        /* Corporate header tweaks */
+        header { background: #ffffff; border-bottom: 1px solid rgba(15,23,42,0.04); }
+        header .max-w-7xl a { color: #0f172a; }
+
+        /* Project card modern styles */
+        .project-card {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background: var(--card-bg);
+            border: 1px solid rgba(15,23,42,0.04);
+            transition: transform 0.28s ease, box-shadow 0.28s ease;
+            box-shadow: 0 6px 18px rgba(15,23,42,0.03);
+        }
+        .project-card:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(15,23,42,0.06); }
+        .project-image-wrap { position: relative; }
+        .project-image-overlay {
+            position: absolute; inset: 0; pointer-events: none;
+            background: linear-gradient(180deg, rgba(0,0,0,0.00) 30%, rgba(0,0,0,0.18) 100%);
+            mix-blend-mode: multiply;
+        }
+        .project-image-meta { position: absolute; left: 1rem; bottom: 1rem; z-index: 10; display:flex; gap:0.5rem; align-items:center; }
+        .project-image-meta .chip { background: rgba(255,255,255,0.9); color: #0f172a; padding: 0.25rem 0.6rem; border-radius: 999px; font-weight:700; font-size:0.75rem; }
+        .project-stat { display:flex; align-items:center; gap:1rem; justify-content:space-between; }
+        .statistic { font-weight:800; font-size:1.5rem; color:var(--accent); }
+        .cta-link { color:var(--accent); font-weight:600; }
+    .text-muted { color: var(--muted); }
+    .label { color: var(--muted); font-weight:700; }
+
+        /* Styles for Shrinking Header Effect */
+        header {
+            transition: all 0.3s ease-in-out;
+        }
+        header.scrolled {
+            /* Keep header height stable — don't change padding to avoid layout shifts */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+
+        /* When scrolled, collapse the top bar to avoid leaving empty space above the sticky header */
+        header .header-top { transition: height 220ms ease, opacity 220ms ease, padding 220ms ease; }
+        header.scrolled .header-top { height: 0 !important; opacity: 0; padding: 0 !important; margin: 0 !important; overflow: hidden; }
+        #logo-text {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        /* Styles for the project cards (Improved Aesthetics) */
+        .project-card-stats {
+            /* Create a subtle, split-panel look for the key metric */
+            @apply flex flex-col items-center p-3 sm:p-4 rounded-b-xl border-t border-gray-100 bg-gray-50;
+        }
+        .project-card-stats .statistic {
+            @apply text-4xl font-extrabold text-accent leading-none;
+        }
+        .project-card-stats .label {
+            @apply text-xs text-gray-500 mt-1 uppercase tracking-wider;
+        }
+        
+    </style>
+</head>
+<body>
 
 
-    <div class="has-smooth" id="has_smooth"></div>
-    
-    <div id="smooth-wrapper">
-        <div id="smooth-content">
-            <div class="body-wrapper">
-
-                 <header class=" sticky top-0 z-50 bg-white shadow-lg border-b border-gray-100 ">
+ <header class=" sticky top-0 z-50 bg-white shadow-lg border-b border-gray-100 ">
                     <div class="header-top d-none d-md-flex">
                         <div class="container custom-container-1">
                             <div class="row">
                                 <div class="col-xl-9 col-lg-9">
                                     <div class="header-top-text">
-                                        <p>New members: get your first 7 days of turitor Premium for free! Unlock discount now!</p>
+                                        <p>Empowered by Beetle's Strength & Ant's Engineering</p>
                                     </div>
                                 </div>
                                 <div class="col-xl-3 col-lg-3 d-none d-lg-block">
@@ -48,233 +240,302 @@
                         <div class="container custom-container-1">
                             <div class="row align-items-center">
                                 <div class="col-xl-2 col-lg-2 col-6">
-                                    <div class="header-logo">
-                                        <!-- Use a text-based logo for clarity and SEO; keep image available for visual branding if needed -->
-                                        <a href="index.php" id="site-logo-text" style="text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
-                                            <p style="font-weight:800; color:var(--accent); font-size:18px;">Beetle & Ant Co.</p>
-                                            <!-- <img src="assets/images/logo/logo.png" alt="Beetle & Ant Co." style="height:26px; opacity:0.9; filter:grayscale(100%);"> -->
-                                        </a>
-                                    </div>
+                                     <div class="h5_header-logo flex align-items-center justify-content-center">
+    <a href="index.php" aria-label="Beetle & Ant Co. - Go to Homepage" class="logo-link">
+        
+        <span class="visually-hidden">Beetle & Ant Co.</span>
+        
+        <span class="logo-text" aria-hidden="true">
+            <span class="logo-beetle">Beetle</span>
+            &amp;
+            <span class="logo-ant">Ant Co.</span>
+        </span>
+        
+    </a>
+</div>
+<style>
+.h5_header-logo {
+    /* Ensures the logo area behaves like a block element, taking its required space */
+    display: block; 
+    text-align: center; /* Centers the logo link inside its container */
+}
+
+.logo-link {
+    /* Critical for text in one line: removes any default link text decoration */
+    text-decoration: none; 
+    display: inline-block; /* Allows vertical padding/margins but keeps it naturally flowing */
+    line-height: 1; /* Prevents extra vertical spacing that can cause wrapping */
+}
+
+.logo-text {
+    /* Set a strong, readable base font size */
+    font-size: 24px;
+    font-family: 'Arial', sans-serif; /* Replace with your brand font */
+    white-space: nowrap; /* CRITICAL: Prevents the text from wrapping to a new line */
+}
+
+/* 1. Primary Brand Color (Beetle) */
+.logo-beetle {
+    /* Deep, professional color (Navy/Dark Gray) */
+    color: #34495E; 
+    font-weight: 700; /* Extra bold for heavy emphasis */
+    margin-right: 5px; /* Small space after the word */
+}
+
+/* 2. Secondary/Accent Brand Color (Ant Co.) */
+.logo-ant {
+    /* Bright, contrasting color (Orange/Coral) */
+    color: #E67E22; 
+    font-weight: 700; /* Bold */
+}
+
+/* Style for the ampersand (&) */
+.logo-text > & {
+    color: #95A5A6; /* A neutral color for the connector */
+    font-weight: 300; /* Lighter weight to be subtle */
+    font-size: 20px; /* Slightly smaller than the main text */
+}
+
+/* Hides the accessibility text */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+</style>
                                 </div>
                                 <div class="col-xl-7 col-lg-7 text-center d-none d-lg-block">
                                     <div class="header-menu ">
                                         <nav class="header-nav-menu" id="mobile-menu">
                                             <ul>
-                                                <li class="menu-has-child">
-                                                    <a href="index.php">Home</a>
-                                                    <ul class="submenu">
+                                                <li >
+                                                    <a href="index.php">Engineering</a>
+                                                    <!-- <ul class="submenu">
                                                         <li><a href="index.php">Beetle &amp; Ant Co.</a></li>
-                                                        <li><a href="index-2.php">AI Co-Pilot</a></li>
-                                                        <li><a href="index-3.php">AI Image Generator</a></li>
-                                                        <li><a href="index-4.php">AI Text Generator</a></li>
-                                                        <li><a href="index-5.php">AI Photostock</a></li>
-                                                    </ul>
+                                                    
+                                                    </ul> -->
                                                 </li>
-                                                <li><a href="about.php">About</a></li>
+                                                <!-- <li><a href="about.php">About</a></li> -->
                                                 <li class="menu-has-child">
-                                                    <a href="#">Pages</a>
+                                                    <a href="#">Explore</a>
                                                     <ul class="submenu">
-                                                        <li><a href="service.php">Services</a></li>
+                                                        <!-- <li><a href="service.php">Services</a></li> -->
                                                         <li><a href="team.php">Team</a></li>
                                                         <li><a href="portfolio.php">Portfolio</a></li>
                                                         <li><a href="price.php">Pricing</a></li>
-                                                        <li><a href="faq.php">FAQ's</a></li>
+                                                        <!-- <li><a href="faq.php">FAQ's</a></li> -->
                                                         <li><a href="testimonial.php">Testimonials</a></li>
-                                                        <!-- <li><a href="wishlist.php">Wishlist</a></li>
-                                                        <li><a href="cart.php">Cart</a></li>
-                                                        <li><a href="checkout.php">Checkout</a></li>
-                                                        <li><a href="login.php">Login</a></li> -->
-                                                        <li><a href="404.php">404</a></li>
+                                                        <!-- <li><a href="wishlist.php">Wishlist</a></li> -->
+                                                        <!-- <li><a href="cart.php">Cart</a></li> -->
+                                                        <!-- <li><a href="checkout.php">Checkout</a></li> -->
+                                                        <!-- <li><a href="login.php">Login</a></li> -->
+                                                        <!-- <li><a href="404.php">404</a></li> -->
                                                     </ul>
                                                 </li>
                                                 <li class="menu-has-child" id="pages-mega-menu-services">
-    <a href="#">Services</a>
-    <div class="mega-menu-wrapper">
-        <div class="mega-menu-container">
-            <!-- Left Sidebar: Service Categories -->
-            <div class="mega-menu-sidebar">
-                <div class="sidebar-item active">
-                    <div class="sidebar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                            <line x1="12" y1="22.08" x2="12" y2="12"/>
-                        </svg>
-                    </div>
-                    <span>AI & ML</span>
-                </div>
+  <a href="#">Services</a>
 
-                <div class="sidebar-item">
-                    <div class="sidebar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
-                        </svg>
-                    </div>
-                    <span>Cloud & DevSecOps</span>
-                </div>
-
-                <div class="sidebar-item">
-                    <div class="sidebar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                        </svg>
-                    </div>
-                    <span>IoT & Custom Software</span>
-                </div>
-
-                <div class="sidebar-item">
-                    <div class="sidebar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-                            <line x1="12" y1="18" x2="12.01" y2="18"/>
-                        </svg>
-                    </div>
-                    <span>Mobile App</span>
-                </div>
-
-                <div class="sidebar-item">
-                    <div class="sidebar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                            <line x1="8" y1="21" x2="16" y2="21"/>
-                            <line x1="12" y1="17" x2="12" y2="21"/>
-                        </svg>
-                    </div>
-                    <span>Web & Backend</span>
-                </div>
-
-                <div class="sidebar-item">
-                    <div class="sidebar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 20h9"/>
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                        </svg>
-                    </div>
-                    <span>Design & Consulting</span>
-                </div>
-
-                <div class="sidebar-item">
-                    <div class="sidebar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M12 1v6m0 6v6"/>
-                            <path d="M1 12h6m6 0h6"/>
-                        </svg>
-                    </div>
-                    <span>Enterprise Solution</span>
-                </div>
-            </div>
-
-            <!-- Middle Section: Solutions Grid -->
-            <div class="mega-menu-solutions">
-                <h3 class="solutions-title">Solutions</h3>
-                
-                <div class="solutions-grid">
-                    <!-- Column 1 -->
-                    <div class="solutions-column">
-                        <div class="solution-item">
-                            <h4>Artificial Intelligence</h4>
-                            <p>Innovating businesses with digital technologies</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>Agentic AI</h4>
-                            <p>Elevate your experience with AI services</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>Natural Language Processing</h4>
-                            <p>Advanced NLP solutions for enterprises</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>Custom LLM Development</h4>
-                            <p>Precision LLM development for enterprises</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>Data Analytics</h4>
-                            <p>Transforming raw data into insights</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>Microsoft Fabric Consulting</h4>
-                            <p>Data strategy, implementation, and ongoing support to maximize your data's value</p>
-                        </div>
-                    </div>
-
-                    <!-- Column 2 -->
-                    <div class="solutions-column">
-                        <div class="solution-item">
-                            <h4>GEN AI</h4>
-                            <p>Unleashing a New Era of Innovation</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>ML Application Development</h4>
-                            <p>Automating processes for increased efficiency</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>Retrieval Augmented Generation</h4>
-                            <p>Enhancing LLMs with external knowledge</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>ChatBot Development</h4>
-                            <p>Handling multiple queries simultaneously</p>
-                        </div>
-
-                        <div class="solution-item">
-                            <h4>Business Intelligence</h4>
-                            <p>Visualizing trends for better forecasting</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Section: Engagement Models -->
-            <div class="mega-menu-engagement">
-                <h3 class="engagement-title">Engagement Models</h3>
-                <p class="engagement-subtitle">Flexible Partnerships. Predictable Outcomes.</p>
-
-                <div class="engagement-items">
-                    <div class="engagement-card">
-                        <div class="engagement-icon pink-gradient">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                        </div>
-                        <div class="engagement-content">
-                            <h4>Staff Augmentation</h4>
-                            <p>Access top-tier talent on demand: Dedicated, Hourly, or Flexible.</p>
-                        </div>
-                    </div>
-
-                    <div class="engagement-card">
-                        <div class="engagement-icon pink-gradient">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                        </div>
-                        <div class="engagement-content">
-                            <h4>Project-Based Delivery</h4>
-                            <p>End-to-end ownership of outcomes with full-cycle delivery.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div class="mega-menu-wrapper">
+    <div class="mega-menu-container">
+      <!-- ========== LEFT SIDEBAR ========== -->
+      <div class="mega-menu-sidebar">
+        <div class="sidebar-item active" data-service="ai-ml">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <span>AI & ML</span>
         </div>
+
+        <div class="sidebar-item" data-service="cloud-devsecops">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+            </svg>
+          </div>
+          <span>Cloud & DevSecOps</span>
+        </div>
+
+        <div class="sidebar-item" data-service="iot">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+          </div>
+          <span>IoT & Custom Software</span>
+        </div>
+
+        <div class="sidebar-item" data-service="mobile">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+          </div>
+          <span>Mobile App</span>
+        </div>
+
+        <div class="sidebar-item" data-service="web-backend">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <span>Web & Backend</span>
+        </div>
+
+        <div class="sidebar-item" data-service="design">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <span>Design & Consulting</span>
+        </div>
+
+        <div class="sidebar-item" data-service="enterprise">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6"/>
+              <path d="M1 12h6m6 0h6"/>
+            </svg>
+          </div>
+          <span>Enterprise Solution</span>
+        </div>
+      </div>
+
+      <!-- ========== MIDDLE SOLUTIONS (Dynamic) ========== -->
+      <div class="mega-menu-solutions">
+        <h3 class="solutions-title">Solutions</h3>
+        <div id="solutions-content" class="solutions-grid"></div>
+      </div>
+
+      <!-- ========== RIGHT ENGAGEMENT ========== -->
+      <div class="mega-menu-engagement">
+        <h3 class="engagement-title">Engagement Models</h3>
+        <p class="engagement-subtitle">Flexible Partnerships. Predictable Outcomes.</p>
+        <div class="engagement-items">
+          <div class="engagement-card">
+            <div class="engagement-icon pink-gradient">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="engagement-content">
+              <h4>Staff Augmentation</h4>
+              <p>Access top-tier talent on demand: Dedicated, Hourly, or Flexible.</p>
+            </div>
+          </div>
+          <div class="engagement-card">
+            <div class="engagement-icon pink-gradient">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </div>
+            <div class="engagement-content">
+              <h4>Project-Based Delivery</h4>
+              <p>End-to-end ownership of outcomes with full-cycle delivery.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </li>
+
+<!-- ========== STYLE ========== -->
+
+
+<!-- ========== SCRIPT ========== -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const sidebarItems = document.querySelectorAll(".mega-menu-sidebar .sidebar-item");
+  const solutionsContent = document.getElementById("solutions-content");
+
+  // Define all solutions per service
+  const solutionsData = {
+    "ai-ml": [
+      { title: "Artificial Intelligence", desc: "Innovating businesses with digital technologies" },
+      { title: "Agentic AI", desc: "Elevate your experience with AI services" },
+      { title: "Natural Language Processing", desc: "Advanced NLP solutions for enterprises" },
+      { title: "Custom LLM Development", desc: "Precision LLM development for enterprises" },
+      { title: "Data Analytics", desc: "Transforming raw data into insights" },
+      { title: "Microsoft Fabric Consulting", desc: "Data strategy, implementation, and support" }
+    ],
+    "web-backend": [
+      { title: "Custom Web Development", desc: "Responsive, high-performance websites and portals" },
+      { title: "API Development", desc: "Robust backend architectures for scalable systems" },
+      { title: "CMS Integration", desc: "Headless or traditional CMS implementations" },
+      { title: "E-commerce Solutions", desc: "Secure, scalable online stores" }
+    ],
+    "cloud-devsecops": [
+      { title: "Cloud Migration", desc: "Seamless migration with zero downtime" },
+      { title: "DevSecOps Automation", desc: "Integrate security into CI/CD pipelines" },
+      { title: "Infrastructure as Code", desc: "Automate infrastructure provisioning" }
+    ],
+    "iot": [
+      { title: "IoT Device Integration", desc: "Connect devices with smart data exchange" },
+      { title: "Embedded Systems", desc: "Firmware and software development for IoT" }
+    ],
+    "mobile": [
+      { title: "iOS & Android Apps", desc: "Beautiful, fast, and reliable mobile experiences" },
+      { title: "Flutter / React Native", desc: "Cross-platform apps with native performance" }
+    ],
+    "design": [
+      { title: "UX/UI Design", desc: "Human-centered designs that convert" },
+      { title: "Brand Strategy", desc: "Shape your brand identity through design" }
+    ],
+    "enterprise": [
+      { title: "ERP Solutions", desc: "Integrate your enterprise processes efficiently" },
+      { title: "CRM Development", desc: "Empower your business with custom CRM systems" }
+    ]
+  };
+
+  // Function to render solutions
+  function renderSolutions(service) {
+    const data = solutionsData[service] || [];
+    solutionsContent.innerHTML = data.map(item => `
+      <div class="solution-item">
+        <h4>${item.title}</h4>
+        <p>${item.desc}</p>
+      </div>
+    `).join('');
+  }
+
+  // Default load (AI & ML)
+  renderSolutions("ai-ml");
+
+  // Sidebar click handler
+  sidebarItems.forEach(item => {
+    item.addEventListener("click", () => {
+      sidebarItems.forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      renderSolutions(item.dataset.service);
+    });
+  });
+});
+</script>
 
 <style>
 /* Mega Menu Wrapper */
@@ -663,312 +924,244 @@
     }
 }
 </style>
-                                                <li class="menu-has-child" id="pages-mega-menu">
-    <a href="#">Industries</a>
-    <div class="mega-menu-wrapper">
-        <div class="mega-menu-container">
-            <!-- Left Section: Menu Items in 3 Columns -->
-            <div class="mega-menu-grid">
-                <!-- Column 1 -->
-                <div class="mega-menu-column">
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="service.php">Services</a></h4>
-                            <p>Uses digital twins & IoMT for personalized treatment & improved patient care</p>
-                        </div>
-                    </div>
+ <li class="menu-has-child" id="pages-mega-menu-services">
+  <a href="#">Tech Stacks</a>
 
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                                <line x1="7" y1="7" x2="7.01" y2="7"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="team.php">Team</a></h4>
-                            <p>Crafting healthier lives together with smart tech solutions just for you</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="9" cy="21" r="1"/>
-                                <circle cx="20" cy="21" r="1"/>
-                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="portfolio.php">Portfolio</a></h4>
-                            <p>Build your digital shopfront to drive sales & build visibility online</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="price.php">Pricing</a></h4>
-                            <p>We are building tomorrow's infrastructure today with smart construction</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="faq.php">FAQ's</a></h4>
-                            <p>Leverage AI to visualize real-time mission data for faster, critical decision-making</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Column 2 -->
-                <div class="mega-menu-column">
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="testimonial.php">Testimonials</a></h4>
-                            <p>Get real-time fraud alerts & transform your insurance operations with AI</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="wishlist.php">Wishlist</a></h4>
-                            <p>Access anytime anywhere with cloud-based learning environments for all ages</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                                <polyline points="9 22 9 12 15 12 15 22"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="cart.php">Cart</a></h4>
-                            <p>Book tours and activities instantly with mobile-friendly booking platforms</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-                                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-                                <line x1="6" y1="1" x2="6" y2="4"/>
-                                <line x1="10" y1="1" x2="10" y2="4"/>
-                                <line x1="14" y1="1" x2="14" y2="4"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="checkout.php">Checkout</a></h4>
-                            <p>Innovate your apps, delight your guests with deliciously designed menus</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                                <line x1="1" y1="10" x2="23" y2="10"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="login.php">Login</a></h4>
-                            <p>Design an app that predicts machine downtime to maximize production efficiency</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Column 3 -->
-                <div class="mega-menu-column">
-                    <div class="menu-item-card featured-card">
-                    <div class="best-seller-ribbon">Best Seller</div>
-                        <div class="menu-icon gradient-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polygon points="10 8 16 12 10 16 10 8"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4>
-                                <a href="#">Sports</a>
-                                
-                            </h4>
-                            <p>Effortless IoT integration for sports data in sports app development with us</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="#">Fintech</a></h4>
-                            <p>Integrate big data & IoT for smarter decisions with smart banking solutions</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="#">Real Estate</a></h4>
-                            <p>Monetize your real estate app with In-App purchases and seamless integration</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="#">Social Media</a></h4>
-                            <p>Drive downloads and boost your reach with a custom app development</p>
-                        </div>
-                    </div>
-
-                    <div class="menu-item-card">
-                        <div class="menu-icon pink-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                            </svg>
-                        </div>
-                        <div class="menu-item-content">
-                            <h4><a href="404.php">404</a></h4>
-                            <p>Deliver secure, seamless banking experiences to build trust and drive growth</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Section: Featured Banner -->
-            <div class="mega-menu-featured">
-            <div class="featured-mockup">
-    <blockquote class="instagram-media" 
-        data-instgrm-captioned 
-        data-instgrm-permalink="https://www.instagram.com/reel/DO2b08okwj4/?utm_source=ig_embed&amp;utm_campaign=loading" 
-        data-instgrm-version="14" 
-        style="background:#FFF; border:0; border-radius:3px; 
-               box-shadow:0 0 1px 0 rgba(0,0,0,0.5),
-               0 1px 10px 0 rgba(0,0,0,0.15); 
-               margin: 1px auto; 
-               max-width:540px; min-width:326px; 
-               padding:0; width:100%;">
-    </blockquote>
-    <script async src="//www.instagram.com/embed.js"></script>
-    <style>
-        .featured-mockup {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  max-width: 500px; /* optional: control width */
-  margin: 0 auto;
-}
-
-.instagram-embed-wrapper {
-  width: 100%;
-  max-width: 400px; /* limit size */
-  border-radius: 16px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-}
-
-.instagram-media {
-  margin: 0 !important;
-  width: 100% !important;
-  min-width: unset !important; /* override Instagram inline styles */
-  max-width: 100% !important;
-  pointer-events: auto !important; /* make sure mouse works */
-}
-
-    </style>
-</div>
-
-                <div class="featured-content">
-                    <h3>Shaping the future with cutting-edge digital experiences, innovative products, and transformative ventures.</h3>
-                    <button class="btn-watch-video">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                            <polygon points="5 3 19 12 5 21 5 3"/>
-                        </svg>
-                        Watch Video
-                    </button>
-                </div>
-            </div>
+  <div class="mega-menu-wrapper">
+    <div class="mega-menu-container">
+      <!-- ========== LEFT SIDEBAR ========== -->
+      <div class="mega-menu-sidebar">
+        <div class="sidebar-item active" data-service="ai-ml">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <span>AI & ML</span>
         </div>
+
+        <div class="sidebar-item" data-service="cloud-devsecops">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+            </svg>
+          </div>
+          <span>Cloud & DevSecOps</span>
+        </div>
+
+        <div class="sidebar-item" data-service="iot">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+          </div>
+          <span>IoT & Custom Software</span>
+        </div>
+
+        <div class="sidebar-item" data-service="mobile">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+          </div>
+          <span>Mobile App</span>
+        </div>
+
+        <div class="sidebar-item" data-service="web-backend">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <span>Web & Backend</span>
+        </div>
+
+        <div class="sidebar-item" data-service="design">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <span>Design & Consulting</span>
+        </div>
+
+        <div class="sidebar-item" data-service="enterprise">
+          <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6"/>
+              <path d="M1 12h6m6 0h6"/>
+            </svg>
+          </div>
+          <span>Enterprise Solution</span>
+        </div>
+      </div>
+
+      <!-- ========== MIDDLE SOLUTIONS (Dynamic) ========== -->
+      <div class="mega-menu-solutions">
+        <h3 class="solutions-title">Stacks , Frameworks & Solutions</h3>
+        <div id="solutions-stack-content" class="solutions-grid"></div>
+      </div>
+
+      <!-- ========== RIGHT ENGAGEMENT ========== -->
+      <div class="mega-menu-engagement">
+        <h3 class="engagement-title">Engagement Models</h3>
+        <p class="engagement-subtitle">Flexible Partnerships. Predictable Outcomes.</p>
+        <div class="engagement-items">
+          <div class="engagement-card">
+            <div class="engagement-icon pink-gradient">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="engagement-content">
+              <h4>Staff Augmentation</h4>
+              <p>Access top-tier talent on demand: Dedicated, Hourly, or Flexible.</p>
+            </div>
+          </div>
+          <div class="engagement-card">
+            <div class="engagement-icon pink-gradient">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </div>
+            <div class="engagement-content">
+              <h4>Project-Based Delivery</h4>
+              <p>End-to-end ownership of outcomes with full-cycle delivery.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </li>
 
+<!-- ========== STYLE ========== -->
+
+
+<!-- ========== SCRIPT ========== -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const sidebarItems = document.querySelectorAll(".mega-menu-sidebar .sidebar-item");
+  const solutionsStackContent = document.getElementById("solutions-stack-content");
+
+  // Define all stacks & frameworks per service
+  const solutionsStackData = {
+    "ai-ml": [
+      { title: "TensorFlow", desc: "Open-source library for machine learning and neural networks." },
+      { title: "PyTorch", desc: "Deep learning framework optimized for research and production." },
+      { title: "scikit-learn", desc: "Machine learning toolkit for Python — regression, classification & more." },
+      { title: "Keras", desc: "High-level neural networks API running on TensorFlow." },
+      { title: "OpenAI / LangChain", desc: "Integrate and orchestrate LLMs with custom workflows." },
+      { title: "Pandas / NumPy", desc: "Essential Python libraries for data processing and analytics." }
+    ],
+
+    "web-backend": [
+      { title: "React.js", desc: "Component-based frontend library from Meta." },
+      { title: "Next.js", desc: "Full-stack React framework with SSR & static site generation." },
+      { title: "Vue.js", desc: "Progressive JavaScript framework for building UI." },
+      { title: "Angular", desc: "Enterprise-grade frontend framework by Google." },
+      { title: "Node.js / Express.js", desc: "Event-driven backend runtime and fast API framework." },
+      { title: "Django / Flask", desc: "Python frameworks for rapid backend development." },
+      { title: "Laravel / PHP", desc: "Elegant backend framework for modern web apps." },
+      { title: "GraphQL / Apollo", desc: "Flexible API query language and runtime for APIs." }
+    ],
+
+    "cloud-devsecops": [
+      { title: "AWS / Azure / GCP", desc: "Cloud platforms for scalable deployments and managed services." },
+      { title: "Docker & Kubernetes", desc: "Containerization and orchestration for DevOps." },
+      { title: "Terraform / Ansible", desc: "Infrastructure as Code (IaC) automation tools." },
+      { title: "GitHub Actions / Jenkins", desc: "Continuous integration and deployment pipelines." },
+      { title: "Vault / SonarQube", desc: "Security and code quality tools for DevSecOps workflows." }
+    ],
+
+    "iot": [
+      { title: "Arduino / Raspberry Pi", desc: "Hardware platforms for IoT prototyping." },
+      { title: "MQTT / CoAP", desc: "Lightweight IoT communication protocols." },
+      { title: "AWS IoT Core / Azure IoT Hub", desc: "Cloud-based IoT connectivity and management." },
+      { title: "C / C++ Embedded", desc: "Low-level firmware development for connected devices." },
+      { title: "Node-RED", desc: "Flow-based tool for wiring hardware and APIs." }
+    ],
+
+    "mobile": [
+      { title: "React Native", desc: "Cross-platform mobile apps with React." },
+      { title: "Flutter", desc: "Fast, beautiful apps for iOS and Android from Google." },
+      { title: "Swift (iOS)", desc: "Modern programming language for native iOS apps." },
+      { title: "Kotlin (Android)", desc: "Official language for Android development." },
+      { title: "Ionic / Capacitor", desc: "Hybrid mobile frameworks for web-based apps." }
+    ],
+
+    "design": [
+      { title: "Figma", desc: "Collaborative interface design tool." },
+      { title: "Adobe XD / Illustrator", desc: "Powerful tools for design and prototyping." },
+      { title: "Sketch", desc: "Design and prototyping platform for UI/UX." },
+      { title: "Framer / Webflow", desc: "No-code and design-to-web platforms." },
+      { title: "Miro / Notion", desc: "Collaboration tools for product planning & wireframes." }
+    ],
+
+    "enterprise": [
+      { title: "SAP / Oracle ERP", desc: "Comprehensive enterprise resource planning systems." },
+      { title: "Salesforce", desc: "CRM solutions for sales, marketing, and customer success." },
+      { title: "Microsoft Dynamics 365", desc: "Integrated ERP and CRM business solutions." },
+      { title: "Odoo / ERPNext", desc: "Open-source ERP platforms for SMEs." },
+      { title: "Power BI / Tableau", desc: "Enterprise analytics and business intelligence tools." }
+    ]
+  };
+
+  // Function to render stacks dynamically
+  function renderSolutions(service) {
+    const data = solutionsStackData[service] || [];
+    solutionsStackContent.innerHTML = data.map(item => `
+      <div class="solution-item">
+        <h4>${item.title}</h4>
+        <p>${item.desc}</p>
+      </div>
+    `).join('');
+  }
+
+  // Default load (AI & ML)
+  renderSolutions("ai-ml");
+
+  // Sidebar click handler
+  sidebarItems.forEach(item => {
+    item.addEventListener("click", () => {
+      sidebarItems.forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      renderSolutions(item.dataset.service);
+    });
+  });
+});
+</script>
+
+
 <style>
-/* Mega Menu Styles - Targeted with ID */
-.menu-item-card {
+/* Mega Menu Wrapper */
+#pages-mega-menu-services {
     position: relative;
-    overflow: hidden;
-}
-#pages-mega-menu {
-    position: relative;
-
 }
 
-.best-seller-ribbon {
-    position: absolute;
-    top: 10px;
-    right: -40px;
-    background: #ff4757;
-    color: #fff;
-    padding: 5px 50px;
-    transform: rotate(45deg);
-    font-size: 12px;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-#pages-mega-menu .mega-menu-wrapper {
+#pages-mega-menu-services .mega-menu-wrapper {
     position: absolute;
     left: -550px;
     top: 100%;
-    width: 1320px;
+    width: 1400px;
     max-width: 95vw;
     background: #ffffff;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
     border-radius: 0;
     padding: 0;
     opacity: 0;
@@ -977,309 +1170,385 @@
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
     margin-top: 0;
-    border-top: 3px solid transparent;
-    border-image: linear-gradient(90deg, #e91e63 0%, #2196f3 100%) 1;
+    border-top: 3px solid;
+    border-image: linear-gradient(90deg, #7c3aed 0%, #2563eb 100%) 1;
 }
 
-#pages-mega-menu:hover .mega-menu-wrapper {
+#pages-mega-menu-services:hover .mega-menu-wrapper {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
 }
 
-#pages-mega-menu .mega-menu-container {
+#pages-mega-menu-services .mega-menu-container {
     display: grid;
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 280px 1fr 340px;
     gap: 0;
-    min-height: 500px;
+    min-height: 550px;
 }
 
-#pages-mega-menu .mega-menu-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0;
-    padding: 40px 30px;
-    background: #ffffff;
+/* Left Sidebar */
+#pages-mega-menu-services .mega-menu-sidebar {
+    background: #f8f9fa;
+    padding: 35px 0;
+    border-right: 1px solid #e5e7eb;
 }
 
-#pages-mega-menu .mega-menu-column {
+#pages-mega-menu-services .sidebar-item {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 0 15px;
-}
-
-#pages-mega-menu .menu-item-card {
-    display: flex;
-    gap: 12px;
-    padding: 12px 15px;
-    border-radius: 10px;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    align-items: center;
+    gap: 14px;
+    padding: 14px 30px;
     cursor: pointer;
-    background: transparent;
+    transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
 }
 
-#pages-mega-menu .menu-item-card::before {
+#pages-mega-menu-services .sidebar-item::before {
     content: '';
     position: absolute;
-    top: 0;
     left: 0;
-    right: 0;
+    top: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(233, 30, 99, 0.03) 0%, rgba(33, 150, 243, 0.03) 100%);
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    border-radius: 10px;
-    pointer-events: none;
+    width: 0;
+    background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+    transition: width 0.3s ease;
 }
 
-#pages-mega-menu .menu-item-card:hover {
-    background: linear-gradient(135deg, rgba(233, 30, 99, 0.08) 0%, rgba(33, 150, 243, 0.08) 100%);
-    transform: translateX(3px) translateY(-2px);
-    box-shadow: 0 8px 20px rgba(233, 30, 99, 0.12);
+#pages-mega-menu-services .sidebar-item.active::before,
+#pages-mega-menu-services .sidebar-item:hover::before {
+    width: 4px;
 }
 
-#pages-mega-menu .menu-item-card:hover::before {
-    opacity: 1;
+#pages-mega-menu-services .sidebar-item.active {
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
 }
 
-#pages-mega-menu .menu-icon {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+#pages-mega-menu-services .sidebar-item:hover {
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.06) 0%, rgba(37, 99, 235, 0.03) 100%);
+    transform: translateX(3px);
+}
+
+#pages-mega-menu-services .sidebar-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(135deg, #e9d5ff 0%, #ddd6fe 100%);
+    color: #7c3aed;
+    transition: all 0.3s ease;
     position: relative;
     backdrop-filter: blur(10px);
 }
 
-#pages-mega-menu .menu-icon::before {
+#pages-mega-menu-services .sidebar-item.active .sidebar-icon,
+#pages-mega-menu-services .sidebar-item:hover .sidebar-icon {
+    background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    transform: scale(1.05);
+}
+
+#pages-mega-menu-services .sidebar-icon::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+    inset: 0;
     border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%);
     opacity: 0;
     transition: opacity 0.3s ease;
 }
 
-#pages-mega-menu .menu-item-card:hover .menu-icon::before {
+#pages-mega-menu-services .sidebar-item:hover .sidebar-icon::before {
     opacity: 1;
 }
 
-#pages-mega-menu .pink-icon {
-    background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%);
-    color: #e91e63;
-    box-shadow: 0 2px 8px rgba(233, 30, 99, 0.15);
-}
-
-#pages-mega-menu .gradient-icon {
-    background: linear-gradient(135deg, #e91e63 0%, #2196f3 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
-}
-
-#pages-mega-menu .menu-item-card:hover .menu-icon {
-    transform: scale(1.1) translateY(-2px);
-    box-shadow: 0 6px 16px rgba(233, 30, 99, 0.25);
-}
-
-#pages-mega-menu .menu-item-content {
-    flex: 1;
-}
-
-#pages-mega-menu .menu-item-content h4 {
-    margin: 0 0 4px 0;
+#pages-mega-menu-services .sidebar-item span {
     font-size: 14px;
-    font-weight: 600;
-    color: #1a1a1a;
-    line-height: 1.3;
-}
-
-#pages-mega-menu .menu-item-content h4 a {
-    color: #1a1a1a;
-    text-decoration: none;
+    font-weight: 500;
+    color: #1f2937;
     transition: color 0.3s ease;
 }
 
-#pages-mega-menu .menu-item-card:hover .menu-item-content h4 a,
-#pages-mega-menu .featured-card .menu-item-content h4 a {
-    color: #e91e63;
+#pages-mega-menu-services .sidebar-item.active span,
+#pages-mega-menu-services .sidebar-item:hover span {
+    color: #7c3aed;
 }
 
-#pages-mega-menu .menu-item-content p {
+/* Middle Solutions Section */
+#pages-mega-menu-services .mega-menu-solutions {
+    padding: 35px 40px;
+    background: #ffffff;
+}
+
+#pages-mega-menu-services .solutions-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #9ca3af;
+    margin: 0 0 25px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#pages-mega-menu-services .solutions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+}
+
+#pages-mega-menu-services .solutions-column {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+#pages-mega-menu-services .solution-item {
+    padding: 12px 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+#pages-mega-menu-services .solution-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #e5e7eb 20%, #e5e7eb 80%, transparent 100%);
+}
+
+#pages-mega-menu-services .solution-item:hover {
+    transform: translateX(5px);
+}
+
+#pages-mega-menu-services .solution-item h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 6px 0;
+    transition: color 0.3s ease;
+}
+
+#pages-mega-menu-services .solution-item:hover h4 {
+    color: #7c3aed;
+    background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+#pages-mega-menu-services .solution-item p {
+    font-size: 13px;
+    color: #6b7280;
     margin: 0;
-    font-size: 12px;
-    color: #666666;
     line-height: 1.5;
 }
 
-/* Featured Section */
-#pages-mega-menu .mega-menu-featured {
-    background: #f8f9fa;
-    padding: 40px 35px;
+/* Right Engagement Section */
+#pages-mega-menu-services .mega-menu-engagement {
+    background: linear-gradient(135deg, #faf5ff 0%, #f3f4f6 100%);
+    padding: 35px 30px;
+    border-left: 1px solid #e5e7eb;
+}
+
+#pages-mega-menu-services .engagement-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 8px 0;
+}
+
+#pages-mega-menu-services .engagement-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0 0 30px 0;
+}
+
+#pages-mega-menu-services .engagement-items {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 20px;
+}
+
+#pages-mega-menu-services .engagement-card {
+    display: flex;
+    gap: 15px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
     position: relative;
     overflow: hidden;
 }
 
-#pages-mega-menu .featured-mockup {
-    flex: 1;
+#pages-mega-menu-services .engagement-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.03) 0%, rgba(37, 99, 235, 0.03) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#pages-mega-menu-services .engagement-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 28px rgba(124, 58, 237, 0.15);
+    border-color: #c4b5fd;
+}
+
+#pages-mega-menu-services .engagement-card:hover::before {
+    opacity: 1;
+}
+
+#pages-mega-menu-services .engagement-icon {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 25px;
+    transition: all 0.4s ease;
+    position: relative;
 }
 
-#pages-mega-menu .featured-mockup img {
-    width: 100%;
-    max-width: 350px;
-    height: auto;
-    object-fit: contain;
-    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.1));
+#pages-mega-menu-services .pink-gradient {
+    background: linear-gradient(135deg, #fce7f3 0%, #e9d5ff 100%);
+    color: #c026d3;
 }
 
-#pages-mega-menu .featured-content {
-    margin-top: auto;
-}
-
-#pages-mega-menu .featured-content h3 {
-    font-size: 15px;
-    font-weight: 500;
-    margin: 0 0 20px 0;
-    line-height: 1.6;
-    color: #2c3e50;
-}
-
-#pages-mega-menu .btn-watch-video {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #1a1a1a;
+#pages-mega-menu-services .engagement-card:hover .engagement-icon {
+    background: linear-gradient(135deg, #c026d3 0%, #7c3aed 100%);
     color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 8px 20px rgba(192, 38, 211, 0.3);
 }
 
-#pages-mega-menu .btn-watch-video:hover {
-    background: #333333;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+#pages-mega-menu-services .engagement-icon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#pages-mega-menu-services .engagement-card:hover .engagement-icon::before {
+    opacity: 1;
+}
+
+#pages-mega-menu-services .engagement-content h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 6px 0;
+    transition: color 0.3s ease;
+}
+
+#pages-mega-menu-services .engagement-card:hover .engagement-content h4 {
+    color: #7c3aed;
+}
+
+#pages-mega-menu-services .engagement-content p {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
 }
 
 /* Hide default submenu */
-#pages-mega-menu > .submenu {
+#pages-mega-menu-services > .submenu {
     display: none !important;
 }
 
 /* Responsive Design */
-@media (max-width: 1400px) {
-    #pages-mega-menu .mega-menu-wrapper {
+@media (max-width: 1500px) {
+    #pages-mega-menu-services .mega-menu-wrapper {
         width: 1200px;
-        left: -150px;
+        left: -200px;
     }
     
-    #pages-mega-menu .mega-menu-container {
-        grid-template-columns: 1fr 350px;
+    #pages-mega-menu-services .mega-menu-container {
+        grid-template-columns: 260px 1fr 320px;
     }
 }
 
-@media (max-width: 1200px) {
-    #pages-mega-menu .mega-menu-wrapper {
+@media (max-width: 1280px) {
+    #pages-mega-menu-services .mega-menu-wrapper {
         width: 1000px;
         left: -100px;
     }
     
-    #pages-mega-menu .mega-menu-container {
-        grid-template-columns: 1fr 320px;
+    #pages-mega-menu-services .mega-menu-container {
+        grid-template-columns: 240px 1fr 300px;
     }
     
-    #pages-mega-menu .mega-menu-grid {
-        padding: 30px 20px;
+    #pages-mega-menu-services .solutions-grid {
+        gap: 20px;
     }
 }
 
-@media (max-width: 992px) {
-    #pages-mega-menu .mega-menu-wrapper {
-        width: 800px;
+@media (max-width: 1024px) {
+    #pages-mega-menu-services .mega-menu-wrapper {
+        width: 900px;
         left: -50px;
     }
     
-    #pages-mega-menu .mega-menu-container {
+    #pages-mega-menu-services .mega-menu-container {
         grid-template-columns: 1fr;
     }
     
-    #pages-mega-menu .mega-menu-grid {
-        grid-template-columns: repeat(2, 1fr);
+    #pages-mega-menu-services .mega-menu-sidebar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
     }
     
-    #pages-mega-menu .mega-menu-featured {
-        flex-direction: row;
-        align-items: center;
-        gap: 30px;
-        padding: 30px;
-    }
-    
-    #pages-mega-menu .featured-mockup {
-        flex: 0 0 250px;
-        margin-bottom: 0;
+    #pages-mega-menu-services-services .mega-menu-engagement {
+        border-left: none;
+        border-top: 1px solid #e5e7eb;
     }
 }
 
 @media (max-width: 768px) {
-    #pages-mega-menu .mega-menu-wrapper {
+    #pages-mega-menu-services .mega-menu-wrapper {
         width: 600px;
         left: 0;
     }
     
-    #pages-mega-menu .mega-menu-grid {
+    #pages-mega-menu-services .mega-menu-sidebar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    #pages-mega-menu-services .solutions-grid {
         grid-template-columns: 1fr;
-        padding: 25px 20px;
-    }
-    
-    #pages-mega-menu .mega-menu-column {
-        padding: 0 10px;
-    }
-    
-    #pages-mega-menu .mega-menu-featured {
-        flex-direction: column;
-    }
-    
-    #pages-mega-menu .featured-mockup {
-        flex: 1;
-        margin-bottom: 20px;
     }
 }
 </style>
+
+
                                                 <li class="menu-has-child">
                                                     <a href="shop.php">Shop</a>
-                                                    <ul class="submenu">
+                                                    <!-- <ul class="submenu">
                                                         <li><a href="shop.php">Shop</a></li>
                                                         <li><a href="shop-details.php">Shop Details</a></li>
-                                                    </ul>
+                                                    </ul> -->
                                                 </li>
                                                 <li class="menu-has-child">
                                                     <a href="portfolio-blog.php">Blog</a>
-                                                    <ul class="submenu">
+                                                    <!-- <ul class="submenu">
                                                         <li><a href="portfolio-blog.php">Blog</a></li>
-                                                        <li><a href="blog-details.php">Blog Details</a></li>
-                                                    </ul>
+                                                    </ul> -->
                                                 </li>
                                                 <li><a href="contact.php">Contact</a></li>
                                             </ul>
@@ -1289,12 +1558,12 @@
                                 <div class="col-xl-3 col-lg-3 col-6">
                                     <div class="header-action-wrap d-flex align-items-center justify-content-end">
                                         <div class="header-action d-none d-sm-flex">
-                                            <a href="#" class="header-action-login">
+                                            <a href="partner.php" class="header-action-login">
                                                 <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                     <path d="M7.01172 8C8.94472 8 10.5117 6.433 10.5117 4.5C10.5117 2.567 8.94472 1 7.01172 1C5.07872 1 3.51172 2.567 3.51172 4.5C3.51172 6.433 5.07872 8 7.01172 8Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                                                     <path d="M13.026 15C13.026 12.291 10.331 10.1 7.013 10.1C3.695 10.1 1 12.291 1 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                                                 </svg>
-                                                Login                                           
+                                                Partnership Venture                                         
                                             </a>
                                             <a href="contact.php" class="header-action-btn">
                                                 Work with us                                      
@@ -1310,7 +1579,7 @@
                             </div>
                         </div>
                     </div>
-                </header>              
+                </header>          
                 <main>
                     <!-- banner area start -->
                     <section class="banner-area">
@@ -1452,7 +1721,111 @@
                         </div>
                     </section>
                     <!-- feature area end -->
+<!-- tech capabilities area start -->
+<section class="tech-area pt-140 pb-20 bg-[#f8fafc] relative overflow-hidden">
+  <div class="container">
+    <div class="row justify-content-center mb-32">
+      <div class="col-12 text-center">
+        <span class="section-subtitle tp_fade_left">Core Technology Expertise</span>
+        <h2 class="section-title tp_title_slideup mb-4">We Build the Digital Infrastructure of the Future</h2>
+        <p class="section-desc tp_fade_bottom max-w-3xl mx-auto">
+          At Beetle & Ant Co., our teams architect, develop, and deploy technology ecosystems that are intelligent, scalable, and cloud-native — powering the next generation of connected businesses.
+        </p>
+      </div>
+    </div>
 
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div class="tech-card">
+        <div class="tech-icon">
+          <img src="assets/images/tech/web-hosting.png" alt="Cloud Engineering">
+        </div>
+        <h4>Cloud Engineering</h4>
+        <p>Build cloud-native systems using AWS, Azure, and GCP — with auto-scaling, CI/CD, and advanced DevOps automation.</p>
+      </div>
+
+      <div class="tech-card">
+        <div class="tech-icon">
+          <img src="assets/images/tech/ai.png" alt="AI & ML">
+        </div>
+        <h4>AI & Machine Learning</h4>
+        <p>Leverage deep learning, NLP, and predictive analytics to turn enterprise data into actionable intelligence.</p>
+      </div>
+
+      <div class="tech-card">
+        <div class="tech-icon">
+          <img src="assets/images/tech/coding.png" alt="Full Stack Development">
+        </div>
+        <h4>Full-Stack Development</h4>
+        <p>End-to-end web and mobile solutions using Node.js, Angular, React, and Flutter — built for performance and security.</p>
+      </div>
+
+      <div class="tech-card">
+        <div class="tech-icon">
+          <img src="assets/images/tech/database-management.png" alt="Data Engineering">
+        </div>
+        <h4>Data Engineering</h4>
+        <p>Modernize data pipelines with real-time processing, warehousing, and visualization using BigQuery and Snowflake.</p>
+      </div>
+
+      <div class="tech-card">
+        <div class="tech-icon">
+          <img src="assets/images/tech/blockchain.png" alt="Blockchain & Web3">
+        </div>
+        <h4>Blockchain & Web3</h4>
+        <p>Develop decentralized applications, smart contracts, and secure digital identity systems across major blockchains.</p>
+      </div>
+ <div class="tech-card">
+        <div class="tech-icon">
+          <img src="assets/images/tech/shield.png" alt="Cybersecurity">
+        </div>
+        <h4>Cybersecurity & DevSecOps</h4>
+        <p>Embed security in every layer — identity management, encryption, and compliance frameworks that protect data and trust.</p>
+      </div>
+      
+    </div>
+  </div>
+
+  <style>
+    .tech-card {
+      background: #fff;
+      border: 1px solid rgba(15,23,42,0.05);
+      border-radius: 16px;
+      padding: 32px 26px;
+      text-align: left;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.05);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .tech-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 32px rgba(15,23,42,0.08);
+    }
+    .tech-icon img {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 18px;
+      /* filter: brightness(0) saturate(100%) invert(28%) sepia(95%) saturate(2900%) hue-rotate(210deg) brightness(95%) contrast(90%); */
+    }
+    .tech-card h4 {
+      font-size: 18px;
+      color: #0f172a;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .tech-card p {
+      font-size: 15px;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .section-subtitle {
+      color: #2563eb;
+      text-transform: uppercase;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</section>
                     <!-- roadmap area start -->
                     <section class="roadmap-area pt-100 pb-100">
                         <div class="container">
@@ -1551,6 +1924,8 @@
                     </section>
                     <!-- roadmap area end -->
 
+<!-- tech capabilities area end -->
+
                     <!-- apps area start -->
                     <section class="apps-area pt-140 pb-140">
                         <div class="container">
@@ -1584,7 +1959,7 @@
                                 <div class="col-xxl-6 col-xl-7 col-lg-8 col-md-9">
                                     <div class="apps-content">
                                         <h2 class="tp_title_slideup">Easily Bring AI in Your
-                                            Workflow to Create Content</h2>
+                                            Workflow</h2>
                                         <p class="tp_fade_bottom">There are many variations of passages of Lorem Ipsum available <br> but the majority have suffered alteration in some form, by more and <br> more injected humour.</p>
                                         <a href="#" class="theme-btn tp_fade_bottom">Integrate With Your App</a>
                                     </div>
@@ -1781,7 +2156,7 @@
                         </div>
                     </section> -->
                 
-                    <section class="brand-area pb-140">
+                    <!-- <section class="brand-area pb-140">
                         <div class="container">
                             <div class="row justify-content-center">
                                 <div class="col-xxl-5 col-xl-6 col-lg-7 col-md-10">
@@ -1821,14 +2196,254 @@
                                 </div>
                             </div>
                         </div>
-                    </section>
+                    </section> -->
                     <!-- brand area end -->
+                     <section class="why-choose-us-area pt-120 pb-140 bg-[#f8fafc] relative overflow-hidden">
+  <div class="container">
+    <div class="row justify-content-center mb-12">
+      <div class="col-12 text-center">
+        <span class="section-subtitle tp_fade_left">Why Companies Partner With Us</span>
+        <h2 class="section-title tp_title_slideup mb-4">Engineering Partnership, Not Just Outsourcing</h2>
+        <p class="section-desc tp_fade_bottom max-w-3xl mx-auto">
+          Beetle & Ant Co. blends the agility of a freelance network with the accountability of an engineering firm — delivering
+          scalable solutions, reliable developers, and technology that fuels growth.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div class="why-card tp_fade_bottom">
+        <div class="why-icon">
+          <img src="assets/images/group/users-gear.png" alt="Collaborative Teams" />
+        </div>
+        <h4>Flexible Team Models</h4>
+        <p>Hire full teams or individual experts for your projects — scale up or down based on real business needs.</p>
+      </div>
+
+      <div class="why-card tp_fade_bottom">
+        <div class="why-icon">
+          <img src="assets/images/group/cogwheel.png" alt="End-to-End Delivery" />
+        </div>
+        <h4>End-to-End Delivery</h4>
+        <p>From discovery to deployment, we take complete ownership with a focus on timelines, scalability, and quality.</p>
+      </div>
+
+      <div class="why-card tp_fade_bottom">
+        <div class="why-icon">
+          <img src="assets/images/group/bulb.png" alt="Innovation Focus" />
+        </div>
+        <h4>Innovation-Driven</h4>
+        <p>We blend engineering precision with creativity to deliver modern, future-ready software products.</p>
+      </div>
+
+      <div class="why-card tp_fade_bottom">
+        <div class="why-icon">
+          <img src="assets/images/group/24-7.png" alt="Ongoing Support" />
+        </div>
+        <h4>Dedicated Support</h4>
+        <p>Long-term technical partnerships that ensure smooth maintenance, updates, and continuous improvement.</p>
+      </div>
+
+      <div class="why-card tp_fade_bottom">
+        <div class="why-icon">
+          <img src="assets/images/group/security.png" alt="Security & Trust" />
+        </div>
+        <h4>Security & Reliability</h4>
+        <p>We embed DevSecOps practices and compliance into every project — safeguarding your IP and data.</p>
+      </div>
+
+      <div class="why-card tp_fade_bottom">
+        <div class="why-icon">
+          <img src="assets/images/group/success.png" alt="Business Growth" />
+        </div>
+        <h4>Outcome-Focused</h4>
+        <p>Every project is tied to measurable business outcomes — not just code, but real commercial impact.</p>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .why-card {
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.05);
+      border-radius: 16px;
+      padding: 32px 26px;
+      text-align: left;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .why-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    .why-icon img {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 18px;
+    }
+
+    .why-card h4 {
+      font-size: 18px;
+      color: #0f172a;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .why-card p {
+      font-size: 15px;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    .section-subtitle {
+      color: #2563eb;
+      text-transform: uppercase;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</section>
+<section class="talent-solutions-area pt-120 pb-140 bg-[#f8fafc] relative overflow-hidden">
+  <div class="container">
+    <div class="row justify-content-center mb-12">
+      <div class="col-12 text-center">
+        <span class="section-subtitle tp_fade_left">Flexible Tech Partnership</span>
+        <h2 class="section-title tp_title_slideup mb-4">
+          Build Your Dream Team — On Demand
+        </h2>
+        <p class="section-desc tp_fade_bottom max-w-3xl mx-auto">
+          Whether you need one expert developer or a complete engineering squad, Beetle & Ant Co. helps you scale fast with
+          pre-vetted talent, project-based engagement, and full lifecycle delivery support.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div class="talent-card tp_fade_bottom">
+        <div class="talent-icon">
+          <img src="assets/images/dev/web-development.png" alt="Dedicated Developers" />
+        </div>
+        <h4>Dedicated Developers</h4>
+        <p>
+          Hire expert engineers across frontend, backend, mobile, and DevOps — dedicated to your projects, your tools, your time zone.
+        </p>
+      </div>
+
+      <div class="talent-card tp_fade_bottom">
+        <div class="talent-icon">
+          <img src="assets/images/dev/partners.png" alt="Project-Based Teams" />
+        </div>
+        <h4>Project-Based Teams</h4>
+        <p>
+          Get complete agile pods including developers, designers, and QA — tailored to deliver specific outcomes with accountability.
+        </p>
+      </div>
+
+      <div class="talent-card tp_fade_bottom">
+        <div class="talent-icon">
+          <img src="assets/images/dev/handshake.png" alt="Managed Partnership" />
+        </div>
+        <h4>Managed Partnership</h4>
+        <p>
+          We handle onboarding, delivery, quality assurance, and communication — so you focus purely on your product goals.
+        </p>
+      </div>
+
+      <div class="talent-card tp_fade_bottom">
+        <div class="talent-icon">
+          <img src="assets/images/dev/customer-service.png" alt="Continuous Support" />
+        </div>
+        <h4>Continuous Support</h4>
+        <p>
+          From code maintenance to scaling infrastructure — our support engineers stay aligned even after project completion.
+        </p>
+      </div>
+
+      <div class="talent-card tp_fade_bottom">
+        <div class="talent-icon">
+          <img src="assets/images/dev/hourglass.png" alt="Flexible Engagements" />
+        </div>
+        <h4>Flexible Engagements</h4>
+        <p>
+          Start small, expand when needed. Choose hourly, monthly, or milestone-based engagement — without long-term lock-ins.
+        </p>
+      </div>
+
+      <div class="talent-card tp_fade_bottom">
+        <div class="talent-icon">
+          <img src="assets/images/dev/insurance.png" alt="Quality & Reliability" />
+        </div>
+        <h4>Quality & Reliability</h4>
+        <p>
+          Every developer and project undergoes multi-level code review, ensuring enterprise-grade quality and delivery consistency.
+        </p>
+      </div>
+    </div>
+
+    <div class="text-center mt-16">
+      <a href="contact.php" class="theme-btn inline-flex items-center px-8 py-4 text-lg font-semibold rounded-full shadow-md text-white bg-accent hover:bg-opacity-90 transition transform hover:scale-105">
+        Build Your Team Today →
+      </a>
+    </div>
+  </div>
+
+  <style>
+    .talent-card {
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.05);
+      border-radius: 16px;
+      padding: 32px 26px;
+      text-align: left;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .talent-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    .talent-icon img {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 18px;
+      filter: none;
+    }
+
+    .talent-card h4 {
+      font-size: 18px;
+      color: #0f172a;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .talent-card p {
+      font-size: 15px;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    .section-subtitle {
+      color: #2563eb;
+      text-transform: uppercase;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</section>
+
                 </main>
 
                 <!-- footer area start -->
                 <footer class="footer-area">
                     <div class="container">
-                        <div class="footer-top pt-140 pb-55">
+                        <div class="footer-top pt-100 pb-0">
                             <div class="row justify-content-between">
                                 <div class="col-xl-5 col-lg-4 tp_has_fade_anim" data-fade-from="left">
                                     <div class="footer-left mb-50">
