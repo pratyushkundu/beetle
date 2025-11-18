@@ -2048,59 +2048,75 @@ include('db.php');
 $id = $_GET['id'] ?? 0;
 
 if ($id > 0) {
-    // Increase views count
-    $conn->query("UPDATE blogs SET views = views + 1 WHERE id = $id");
+    // Increase views count (PostgreSQL)
+    $update_sql = "UPDATE blogs SET views = views + 1 WHERE id = $1";
+    pg_prepare($conn, "update_views", $update_sql);
+    pg_execute($conn, "update_views", [$id]);
 }
 
 
-// 1. Fetch all blogs for display
+/* ----------------------------------------
+   1. Fetch ALL blogs for display
+----------------------------------------- */
+
 $sql = "SELECT * FROM blogs ORDER BY created_at DESC";
-$result = $conn->query($sql);
+$result = pg_query($conn, $sql);
+
 $all_posts = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $all_posts[] = $row;
-    }
+while ($row = pg_fetch_assoc($result)) {
+    $all_posts[] = $row;
 }
 
-// 3. Fetch popular posts (top 5 most viewed)
-$popular_sql = "SELECT id, title, image, category, created_at, views 
-                FROM blogs 
-                ORDER BY views DESC 
-                LIMIT 5";
 
-$popular_result = $conn->query($popular_sql);
+/* ----------------------------------------
+   2. Fetch POPULAR posts (Top 5)
+----------------------------------------- */
+
+$popular_sql = "
+    SELECT id, title, image, category, created_at, views 
+    FROM blogs 
+    ORDER BY views DESC 
+    LIMIT 5
+";
+
+$popular_res = pg_query($conn, $popular_sql);
 
 $popular_posts = [];
-while ($row = $popular_result->fetch_assoc()) {
+while ($row = pg_fetch_assoc($popular_res)) {
     $popular_posts[] = $row;
 }
 
 
-// 2. Select hero + sidebar posts
+/* ----------------------------------------
+   HERO + SIDEBAR + RECENT
+----------------------------------------- */
+
 $hero_post = count($all_posts) > 0 ? array_shift($all_posts) : null;
 $sidebar_posts = count($all_posts) >= 2 ? array_splice($all_posts, 0, 2) : [];
 $recent_posts = $all_posts;
 
-// 3. Fetch unique categories
+
+/* ----------------------------------------
+   3. Fetch UNIQUE categories
+----------------------------------------- */
+
 $cat_sql = "SELECT DISTINCT category FROM blogs";
-$cat_result = $conn->query($cat_sql);
+$cat_res = pg_query($conn, $cat_sql);
+
 $categories = ['all'];
-while ($cat_row = $cat_result->fetch_assoc()) {
+while ($cat_row = pg_fetch_assoc($cat_res)) {
     $categories[] = $cat_row['category'];
 }
+
+
+/* ----------------------------------------
+   Slug function
+----------------------------------------- */
 
 function make_slug($text) {
     return strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $text), '-'));
 }
 
-// Simulated Popular Posts — replace later with DB logic
-// $popular_posts = [
-//     ['title' => 'The Future of AI and Machine Learning in Tech', 'category' => 'Technology', 'author' => 'David Hall', 'created_at' => '2025-11-13'],
-//     ['title' => 'Best Practices for Cloud Migration in 2025', 'category' => 'Cloud', 'author' => 'Jane Doe', 'created_at' => '2025-11-12'],
-//     ['title' => 'A Deep Dive into the Latest JavaScript Frameworks', 'category' => 'Tech', 'author' => 'Sam Smith', 'created_at' => '2025-11-11'],
-//     ['title' => 'Cybersecurity Trends You Can’t Ignore', 'category' => 'Security', 'author' => 'Ella Tech', 'created_at' => '2025-11-10']
-// ];
 ?>
 
 <section class="inner_portfolio-area-v2">
