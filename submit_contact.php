@@ -1,28 +1,4 @@
-<!-- <?php
-include 'db.php'; // your database connection
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $first_name = $conn->real_escape_string($_POST['first_name']);
-    $last_name  = $conn->real_escape_string($_POST['last_name']);
-    $email      = $conn->real_escape_string($_POST['email']);
-    $phone      = $conn->real_escape_string($_POST['phone']);
-    $subject    = $conn->real_escape_string($_POST['subject']);
-    $message    = $conn->real_escape_string($_POST['message']);
-
-    $sql = "INSERT INTO contact_messages (first_name, last_name, email, phone, subject, message)
-            VALUES (?, ?, ?, ?, ?, ?)";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssss", $first_name, $last_name, $email, $phone, $subject, $message);
-
-    if ($stmt->execute()) {
-        echo "<script>alert('Message sent successfully!'); window.location.href='contact.php';</script>";
-    } else {
-        echo "<script>alert('Failed to send message. Try again.'); window.location.href='contact.php';</script>";
-    }
-}
-?> -->
 
 
 <?php

@@ -1,5 +1,5 @@
 <?php
-include("db.php");
+include("db.php");  // MUST return a PDO object named $conn
 
 // Create uploads folder if not exists
 if (!is_dir("uploads")) {
@@ -11,26 +11,23 @@ $photographer = $_POST['photographer'];
 $price = $_POST['price'];
 $class = $_POST['class'];
 
-// Upload image
 $filename = time() . "_" . basename($_FILES["photo"]["name"]);
 $target = "uploads/" . $filename;
 
 move_uploaded_file($_FILES["photo"]["tmp_name"], $target);
-$imageText = strtoupper($class_label);
 
+// Convert class to uppercase label
+$imageText = strtoupper($class);
 
-// Insert DB record
-$sql = "INSERT INTO photos (name, photographer, price, image, class, imageText) 
-        VALUES (?, ?, ?, ?, ?, ?)";
+// Insert into PostgreSQL
+$sql = "INSERT INTO photos (name, photographer, price, image, class, imagetext)
+        VALUES ($1, $2, $3, $4, $5, $6)";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ssssss", $name, $photographer, $price, $target, $class, $imageText);
-$stmt->execute();
-
-$stmt->close();
-$conn->close();
+$stmt->execute([$name, $photographer, $price, $target, $class, $imageText]);
 
 header("Location: shop.php?uploaded=1");
 exit;
 ?>
+
 

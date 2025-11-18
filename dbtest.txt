@@ -1,0 +1,152 @@
+db.php
+<!-- <?php
+$servername = "localhost";
+$username = "root";
+$password = ""; // default is blank for XAMPP
+$dbname = "blog_system";
+
+$conn = new mysqli($servername, $username, $password, $dbname, 3306);
+
+if ($conn->connect_error) {
+  die("Connection failed: " . $conn->connect_error);
+}
+?> -->\
+
+
+submit_contact.php<!-- <?php
+include 'db.php'; // your database connection
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $first_name = $conn->real_escape_string($_POST['first_name']);
+    $last_name  = $conn->real_escape_string($_POST['last_name']);
+    $email      = $conn->real_escape_string($_POST['email']);
+    $phone      = $conn->real_escape_string($_POST['phone']);
+    $subject    = $conn->real_escape_string($_POST['subject']);
+    $message    = $conn->real_escape_string($_POST['message']);
+
+    $sql = "INSERT INTO contact_messages (first_name, last_name, email, phone, subject, message)
+            VALUES (?, ?, ?, ?, ?, ?)";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssssss", $first_name, $last_name, $email, $phone, $subject, $message);
+
+    if ($stmt->execute()) {
+        echo "<script>alert('Message sent successfully!'); window.location.href='contact.php';</script>";
+    } else {
+        echo "<script>alert('Failed to send message. Try again.'); window.location.href='contact.php';</script>";
+    }
+}
+?> -->
+
+
+add_post.php<!-- <?php
+include('db.php');
+
+$title = $_POST['title'];
+$category = $_POST['category'];
+$author = $_POST['author'];
+$content = $_POST['content'];
+$image = "";
+
+if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
+  $targetDir = "uploads/";
+  if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+  $image = basename($_FILES['image']['name']);
+  move_uploaded_file($_FILES['image']['tmp_name'], $targetDir . $image);
+}
+
+$stmt = $conn->prepare("INSERT INTO blogs (title, category, author, content, image) VALUES (?, ?, ?, ?, ?)");
+$stmt->bind_param("sssss", $title, $category, $author, $content, $image);
+
+if ($stmt->execute()) {
+  echo "<script>alert('✅ Blog posted successfully!'); window.location='portfolio-blog.php';</script>";
+} else {
+  echo "Error: " . $stmt->error;
+}
+
+$stmt->close();
+$conn->close();
+?> -->
+
+get_blogs.php
+<!-- 
+
+<?php
+header("Content-Type: application/json");  // IMPORTANT
+
+include('db.php');
+
+// Validate ID
+if (!isset($_GET['id'])) {
+    echo json_encode(["error" => "No ID provided"]);
+    exit;
+}
+
+$id = intval($_GET['id']);
+
+$sql = "SELECT * FROM blogs WHERE id = $id LIMIT 1";
+$result = $conn->query($sql);
+
+if ($result->num_rows == 0) {
+    echo json_encode(["error" => "Blog not found"]);
+    exit;
+}
+
+$row = $result->fetch_assoc();
+
+// Format image
+$image = $row['image']
+    ? "uploads/" . $row['image']
+    : "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&h=600&fit=crop";
+
+// Send JSON response
+echo json_encode([
+    "id"       => $row["id"],
+    "title"    => $row["title"],
+    "category" => $row["category"],
+    "author"   => $row["author"],
+    "image"    => $image,
+    "date"     => date("M d, Y", strtotime($row["created_at"])),
+    "content"  => nl2br($row["content"])   // keep formatting
+]);
+?> -->
+
+
+upload_photos.php
+<?php
+include("db.php");
+
+// Create uploads folder if not exists
+if (!is_dir("uploads")) {
+    mkdir("uploads", 0777, true);
+}
+
+$name = $_POST['name'];
+$photographer = $_POST['photographer'];
+$price = $_POST['price'];
+$class = $_POST['class'];
+
+// Upload image
+$filename = time() . "_" . basename($_FILES["photo"]["name"]);
+$target = "uploads/" . $filename;
+
+move_uploaded_file($_FILES["photo"]["tmp_name"], $target);
+$imageText = strtoupper($class_label);
+
+
+// Insert DB record
+$sql = "INSERT INTO photos (name, photographer, price, image, class, imageText) 
+        VALUES (?, ?, ?, ?, ?, ?)";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ssssss", $name, $photographer, $price, $target, $class, $imageText);
+$stmt->execute();
+
+$stmt->close();
+$conn->close();
+
+header("Location: shop.php?uploaded=1");
+exit;
+?>
+
