@@ -1,17 +1,20 @@
 FROM php:8.2-apache
 
-# Enable PHP extensions for PostgreSQL
-RUN docker-php-ext-install pdo pdo_pgsql
+# Install system dependencies required for PostgreSQL
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    postgresql-client \
+    && docker-php-ext-install pdo pdo_pgsql
 
-# Enable Apache mod_rewrite (important for routes & clean URLs)
+# Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Copy all files to Apache root
+# Copy project files
 COPY . /var/www/html/
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/
-RUN chmod -R 755 /var/www/html/
+# Permissions
+RUN chown -R www-data:www-data /var/www/html/ \
+    && chmod -R 755 /var/www/html/
 
 EXPOSE 80
 
