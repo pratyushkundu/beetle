@@ -1,5 +1,5 @@
 <?php
-include("db.php");  // MUST return a PDO object named $conn
+include("db.php");
 
 // Create uploads folder if not exists
 if (!is_dir("uploads")) {
@@ -23,11 +23,16 @@ $imageText = strtoupper($class);
 $sql = "INSERT INTO photos (name, photographer, price, image, class, imagetext)
         VALUES ($1, $2, $3, $4, $5, $6)";
 
-$stmt = $conn->prepare($sql);
-$stmt->execute([$name, $photographer, $price, $target, $class, $imageText]);
+$result = pg_query_params($conn, $sql, [$name, $photographer, $price, $target, $class, $imageText]);
+
+if (!$result) {
+    echo "Error inserting photo: " . pg_last_error($conn);
+    exit;
+}
 
 header("Location: shop.php?uploaded=1");
 exit;
 ?>
+
 
 
