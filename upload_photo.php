@@ -1,19 +1,27 @@
 <?php
 include("db.php"); // must return $conn (pg_connect)
 
-// Stop any accidental output
 ob_start();
-
 // Create uploads folder if not exists
 if (!is_dir("uploads")) {
     mkdir("uploads", 0777, true);
 }
 
 // Get POST values
-$name        = $_POST['name'] ?? '';
-$photographer= $_POST['photographer'] ?? '';
-$price       = $_POST['price'] ?? '';
-$class       = $_POST['class'] ?? '';
+$name         = $_POST['name'] ?? '';
+$photographer = $_POST['photographer'] ?? '';
+$price        = $_POST['price'] ?? '';
+$class        = $_POST['class'] ?? '';
+
+// Map class to label
+$classLabels = [
+    "col-span-2 row-span-3" => "FEATURED EDITORIAL",
+    "col-span-1 row-span-2" => "NATURE",
+    "col-span-2 row-span-2" => "LANDSCAPE",
+    "col-span-1 row-span-1" => "SMALL"
+];
+
+$imageText = $classLabels[$class] ?? 'FEATURED';
 
 // Handle uploaded file
 if (isset($_FILES['photo']) && $_FILES['photo']['error'] === 0) {
@@ -26,9 +34,6 @@ if (isset($_FILES['photo']) && $_FILES['photo']['error'] === 0) {
 } else {
     die("No file uploaded or upload error.");
 }
-
-// Convert class to uppercase for imageText
-$imageText = strtoupper($class);
 
 // Insert into PostgreSQL
 $sql = "INSERT INTO photos (name, photographer, price, image, class, imagetext) 
@@ -43,7 +48,4 @@ if (!$result) {
 // Redirect safely
 header("Location: shop.php?uploaded=1");
 exit;
-
-
-
-
+?>
