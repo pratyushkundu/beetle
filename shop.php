@@ -1656,7 +1656,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
 
             <div class="absolute bottom-4 left-4 text-white">
-                <div class="text-xs tracking-widest opacity-80"><?= $p['imageText'] ?></div>
+                <div class="text-xs tracking-widest opacity-80"><?= $p['imagetext'] ?></div>
                 <h3 class="font-semibold text-lg"><?= $p['name'] ?></h3>
                 <p class="text-sm opacity-75">by <?= $p['photographer'] ?></p>
                 <p class="text-sm font-semibold mt-1"><?= $p['price'] ?></p>
