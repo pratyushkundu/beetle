@@ -12,26 +12,9 @@ if ($result) {
     }
 }
 
-// Default demo photos
+// // Default demo photos
 $defaultPhotos = [
-    [
-        'name'=> "Urban Sunrise",
-        'photographer'=> "Alex K.",
-        'price'=> "$299",
-        'isFeatured'=> true,
-        'class'=> "col-span-2 row-span-3",
-        'image'=> "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800",
-        'imageText'=> "FEATURED EDITORIAL"
-    ],
-    [
-        'name'=> "Nature Escape",
-        'photographer'=> "Rhea S.",
-        'price'=> "$249",
-        'isFeatured'=> false,
-        'class'=> "col-span-1 row-span-2",
-        'image'=> "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800",
-        'imageText'=> "NATURE"
-    ]
+  
 ];
 
 // Merge DB + default photos
