@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS blogs (
     author VARCHAR(100),
     content TEXT,
     image VARCHAR(255),
+    views INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    views INTEGER DEFAULT 0
 );
 
 -- CONTACT MESSAGES TABLE
