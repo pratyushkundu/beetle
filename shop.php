@@ -4,10 +4,10 @@ include("db.php");
 // Load photos from database
 $dbPhotos = [];
 $sql = "SELECT * FROM photos ORDER BY created_at DESC";
-$result = $conn->query($sql);
+$result = pg_query($conn, $sql);
 
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
+if ($result) {
+    while ($row = pg_fetch_assoc($result)) {
         $dbPhotos[] = $row;
     }
 }
@@ -48,6 +48,7 @@ $page = max(1, min($page, $totalPages));
 $start = ($page - 1) * $perPage;
 $currentPhotos = array_slice($photos, $start, $perPage);
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
