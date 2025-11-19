@@ -1650,8 +1650,8 @@ document.addEventListener("DOMContentLoaded", function () {
         <?php foreach ($currentPhotos as $p): ?>
         <div class="relative group overflow-hidden rounded-xl <?= $p['class'] ?> shadow-lg">
 
-            <img src="<?= $p['image'] ?>" 
-                 class="w-full h-full object-cover group-hover:scale-110 transition">
+          <img src="/<?= $p['image'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition">
+
 
             <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
 
